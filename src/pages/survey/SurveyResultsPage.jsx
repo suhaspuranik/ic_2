@@ -1,99 +1,126 @@
-import { useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useParams } from "react-router-dom";
+import { iConnect_get_survey_details_web } from "../../apis/SurveyApis";
 
 const SurveyResultsPage = () => {
-  // In a real application, you would fetch this data based on the survey ID from URL params
-  const [surveyData] = useState({
-    id: 1,
-    name: "Voter Satisfaction Survey",
-    createdDate: "2023-06-15",
-    targetBooth: "All",
-    status: "Completed",
-    totalResponses: 245,
-    questions: [
-      {
-        id: 1,
-        text: "How satisfied are you with the current infrastructure in your area?",
-        type: "radio",
-        options: [
-          "Very Satisfied",
-          "Satisfied",
-          "Neutral",
-          "Dissatisfied",
-          "Very Dissatisfied",
-        ],
-      },
-      {
-        id: 2,
-        text: "Which of the following issues need immediate attention?",
-        type: "checkbox",
-        options: [
-          "Roads",
-          "Water Supply",
-          "Electricity",
-          "Sanitation",
-          "Public Transport",
-          "Healthcare",
-        ],
-      },
-      {
-        id: 3,
-        text: "How likely are you to vote in the upcoming elections?",
-        type: "radio",
-        options: [
-          "Very Likely",
-          "Likely",
-          "Undecided",
-          "Unlikely",
-          "Very Unlikely",
-        ],
-      },
-    ],
+  const { id } = useParams();
+
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  const [surveyData, setSurveyData] = useState({
+    id: null,
+    name: "",
+    createdDate: "",
+    targetBooth: "",
+    status: "",
+    totalResponses: 0,
+    questions: [],
   });
 
-  // Sample booth-wise response data
-  const [boothData] = useState([
-    {
-      boothId: 1,
-      boothName: "Booth 101 - Central",
-      responses: 78,
-      type: "Strong",
-    },
-    { boothId: 2, boothName: "Booth 102 - North", responses: 45, type: "Weak" },
-    {
-      boothId: 3,
-      boothName: "Booth 103 - South",
-      responses: 62,
-      type: "Strong",
-    },
-    { boothId: 4, boothName: "Booth 104 - East", responses: 35, type: "Swing" },
-    { boothId: 5, boothName: "Booth 105 - West", responses: 25, type: "Weak" },
-  ]);
+  const [boothData, setBoothData] = useState([]);
+  const [questionResponses, setQuestionResponses] = useState({});
 
-  // Sample response data for each question
-  const [questionResponses] = useState({
-    1: {
-      "Very Satisfied": 45,
-      Satisfied: 98,
-      Neutral: 56,
-      Dissatisfied: 32,
-      "Very Dissatisfied": 14,
-    },
-    2: {
-      Roads: 156,
-      "Water Supply": 178,
-      Electricity: 89,
-      Sanitation: 134,
-      "Public Transport": 112,
-      Healthcare: 98,
-    },
-    3: {
-      "Very Likely": 132,
-      Likely: 67,
-      Undecided: 28,
-      Unlikely: 12,
-      "Very Unlikely": 6,
-    },
-  });
+  const safeParse = (maybeJson) => {
+    if (maybeJson == null) return null;
+    if (typeof maybeJson !== "string") return maybeJson;
+    try {
+      return JSON.parse(maybeJson);
+    } catch (_e) {
+      return null;
+    }
+  };
+
+  const selectedSurveyId = useMemo(() => {
+    const numeric = Number(id);
+    return Number.isFinite(numeric) ? numeric : id;
+  }, [id]);
+
+  useEffect(() => {
+    let cancelled = false;
+    const fetchData = async () => {
+      setLoading(true);
+      setError("");
+      try {
+        const surveys = await iConnect_get_survey_details_web();
+        const survey = Array.isArray(surveys)
+          ? surveys.find((s) => String(s.survey_id) === String(selectedSurveyId)) || surveys[0]
+          : null;
+
+        if (!survey) {
+          throw new Error("Survey not found");
+        }
+
+        const parsedQuestions = safeParse(survey.questions) || [];
+        const parsedResponses = safeParse(survey.responses) || [];
+        const parsedWardsBooths = safeParse(survey.wards_booths) || [];
+
+        // Build questions model expected by UI
+        const questions = parsedQuestions.map((q, idx) => ({
+          id: q.question_id ?? q.id ?? idx + 1,
+          text: q.question_text ?? q.text ?? "",
+          type: q.question_type ?? q.type ?? "radio",
+          options: Array.isArray(q.options) ? q.options : [],
+        }));
+
+        // Aggregate option counts per question from responses
+        const countsByQuestion = {};
+        const validResponses = (Array.isArray(parsedResponses) ? parsedResponses : []).filter(
+          (r) => r && (r.response_id != null || r.submitted_at)
+        );
+
+        for (const resp of validResponses) {
+          const answers = Array.isArray(resp.answers) ? resp.answers : [];
+          for (const ans of answers) {
+            const qid = ans.question_id;
+            const answerValue = ans.answer;
+            if (qid == null || answerValue == null) continue;
+            if (!countsByQuestion[qid]) countsByQuestion[qid] = {};
+            countsByQuestion[qid][answerValue] = (countsByQuestion[qid][answerValue] || 0) + 1;
+          }
+        }
+
+        // Booth-wise data is not fully derivable from API without booth names; skip if unavailable
+        const boothItems = [];
+        if (Array.isArray(parsedWardsBooths) && parsedWardsBooths.length > 0) {
+          for (const wb of parsedWardsBooths) {
+            const boothIds = Array.isArray(wb.booth_ids) ? wb.booth_ids : [];
+            for (const bid of boothIds) {
+              boothItems.push({
+                boothId: bid,
+                boothName: `Booth #${bid}`,
+                responses: 0,
+                type: survey.target_booth_type || "",
+              });
+            }
+          }
+        }
+
+        if (cancelled) return;
+
+        setSurveyData({
+          id: survey.survey_id ?? null,
+          name: survey.title || "",
+          createdDate: survey.created_at ? new Date(survey.created_at).toISOString().slice(0, 10) : "",
+          targetBooth: survey.target_booth_type || (survey.target_booth_type === null ? "All" : ""),
+          status: survey.status || "",
+          totalResponses: Number(survey.submitted_count || validResponses.length || 0),
+          questions,
+        });
+        setQuestionResponses(countsByQuestion);
+        setBoothData(boothItems);
+      } catch (e) {
+        if (!cancelled) setError(e.message || "Failed to load survey results");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    };
+
+    fetchData();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedSurveyId]);
 
   // Generate random colors for chart segments
   const generateColors = (count) => {
@@ -172,6 +199,12 @@ const SurveyResultsPage = () => {
 
   return (
     <div className="p-8">
+      {loading && (
+        <div className="mb-6 text-sm text-[var(--text-secondary)]">Loading survey results…</div>
+      )}
+      {!!error && (
+        <div className="mb-6 text-sm text-red-600">{error}</div>
+      )}
       <div className="flex items-center justify-between mb-6">
         <div className="text-sm text-[var(--text-secondary)]">
           <div className="flex flex-col items-start">
@@ -260,6 +293,9 @@ const SurveyResultsPage = () => {
           Question-wise Results
         </h2>
 
+        {surveyData.questions.length === 0 && !loading && !error && (
+          <div className="text-sm text-[var(--text-secondary)]">No questions available.</div>
+        )}
         {surveyData.questions.map((question) => (
           <div
             key={question.id}
