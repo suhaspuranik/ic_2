@@ -134,29 +134,34 @@ const SurveyResultsPage = () => {
 
   // Create simple bar chart using div elements
   const SimpleBarChart = ({ data, labels, title }) => {
-    const maxValue = Math.max(...Object.values(data));
+    const values = labels.map((l) => Number(data[l] || 0));
+    const maxValue = values.length > 0 ? Math.max(...values) : 0;
     const colors = generateColors(labels.length);
 
     return (
       <div className="mt-4">
         <h3 className="text-lg font-semibold mb-2">{title}</h3>
-        <div className="space-y-2">
-          {labels.map((label, index) => (
-            <div key={label} className="flex items-center">
-              <div className="w-1/4 text-sm truncate pr-2">{label}</div>
-              <div className="w-3/4 flex items-center">
-                <div
-                  className="h-6 rounded"
-                  style={{
-                    width: `${(data[label] / maxValue) * 100}%`,
-                    backgroundColor: colors[index],
-                  }}
-                ></div>
-                <span className="ml-2 text-sm">{data[label]}</span>
+        {labels.length === 0 || maxValue <= 0 ? (
+          <div className="text-sm text-[var(--text-secondary)]">No data available.</div>
+        ) : (
+          <div className="space-y-2">
+            {labels.map((label, index) => (
+              <div key={`${label}-${index}`} className="flex items-center">
+                <div className="w-1/4 text-sm truncate pr-2">{label}</div>
+                <div className="w-3/4 flex items-center">
+                  <div
+                    className="h-6 rounded"
+                    style={{
+                      width: `${(Number(data[label] || 0) / maxValue) * 100}%`,
+                      backgroundColor: colors[index],
+                    }}
+                  ></div>
+                  <span className="ml-2 text-sm">{Number(data[label] || 0)}</span>
+                </div>
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     );
   };
@@ -296,9 +301,9 @@ const SurveyResultsPage = () => {
         {surveyData.questions.length === 0 && !loading && !error && (
           <div className="text-sm text-[var(--text-secondary)]">No questions available.</div>
         )}
-        {surveyData.questions.map((question) => (
+        {surveyData.questions.map((question, qIndex) => (
           <div
-            key={question.id}
+            key={question.id ?? qIndex}
             className="mb-8 border-b border-gray-200 pb-6 last:border-b-0 last:pb-0"
           >
             <h3 className="text-lg font-medium mb-2 text-[var(--text-primary)]">
@@ -307,18 +312,21 @@ const SurveyResultsPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Chart */}
               <div>
-                {question.type === "radio" ? (
-                  <SimplePieChart
-                    data={questionResponses[question.id] || {}}
-                    title="Response Distribution"
-                  />
-                ) : (
-                  <SimpleBarChart
-                    data={questionResponses[question.id] || {}}
-                    labels={question.options}
-                    title="Selected Options"
-                  />
-                )}
+                {(() => {
+                  const counts = questionResponses[question.id] || {};
+                  const labels = Array.isArray(question.options) ? question.options : Object.keys(counts);
+                  const dataMap = labels.reduce((acc, opt) => {
+                    acc[opt] = Number(counts[opt] || 0);
+                    return acc;
+                  }, {});
+                  return (
+                    <SimpleBarChart
+                      data={dataMap}
+                      labels={labels}
+                      title="Response Distribution"
+                    />
+                  );
+                })()}
               </div>
 
               {/* Table */}
@@ -339,14 +347,14 @@ const SurveyResultsPage = () => {
                     </tr>
                   </thead>
                   <tbody className="bg-white divide-y divide-gray-200">
-                    {question.options.map((option) => {
+                    {(Array.isArray(question.options) ? question.options : Object.keys(questionResponses[question.id] || {})).map((option, optIndex) => {
                       const counts = questionResponses[question.id] || {};
                       const count = counts[option] || 0;
-                      const total = Object.values(counts).reduce((sum, val) => sum + val, 0);
-                      const percentage = Math.round((count / total) * 100);
+                      const total = Object.values(counts).reduce((sum, val) => sum + Number(val || 0), 0);
+                      const percentage = total > 0 ? Math.round((count / total) * 100) : 0;
 
                       return (
-                        <tr key={option}>
+                        <tr key={`${option}-${optIndex}`}>
                           <td className="px-4 py-2 whitespace-nowrap text-sm text-[var(--text-primary)]">
                             {option}
                           </td>
