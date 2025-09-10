@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>S3 Data Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            line-height: 1.6;
+        }
+
+        pre {
+            background: #f4f4f4;
+            padding: 10px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+
+        #error {
+            color: red;
+            font-weight: bold;
+        }
+
+        #loading {
+            color: blue;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>S3 Data Test</h1>
+    <p>Fetching data from: <a id="s3-url" href=""></a></p>
+    <div id="loading">Loading...</div>
+    <div id="error"></div>
+    <pre id="s3-data"></pre>
+
+    <script>
+        async function fetchS3Data() {
+            const s3Url = 'https://iconnect-uploads.s3.ap-south-1.amazonaws.com/voter_results_1756988397543.json?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=ASIAYZZGSYX5YEHL3XMH%2F20250904%2Fap-south-1%2Fs3%2Faws4_request&X-Amz-Date=20250904T121957Z&X-Amz-Expires=3600&X-Amz-Security-Token=IQoJb3JpZ2luX2VjEPT%2F%2F%2F%2F%2F%2F%2F%2F%2F%2FwEaCmFwLXNvdXRoLTEiSDBGAiEAtiFjZ4wzIL9dNtbYAt%2FzpnaMBXP%2BUcrXOlgjkF5fd7oCIQCyDfC3V1LTIrdyPbVKLujO%2Bte5pO4i16rmOxnE3tijcCqeAwhdEAAaDDYwNTEzNDQzOTkzMSIM46wQlbZDiz6y0EZ0KvsCeKo8jnNP3ZEz%2BEXXVkD4JqUI2n89k%2BhYiti%2BneVmDCYnTKJBNL%2BcskVONweGIPtbEOXG%2FSe1omBvZTvGyPVUdlI5tk1Wa%2BeVV3KNlWP5nFY2Xeo762tMA%2BX3AkPgWxGG7LJwXQkMKXXNgS0mf7z43hHjQKC9DoYm9hFv3tivW4q3PYGy%2FG5xwW1vxNl9C9UKvmFYygwke8WIGzl%2BfhoubabSj4bAm51yv2HN2DzmuGQ6cpxr1XD0w%2FU9dWIQcwEMg17Nmjv37Mz7z6G%2FCmeDYFk4Da9Ni6%2B9FjtobwznI9PcwkyBJM7NUFWEHCJMbercYTXuGmqSJdhoM6CPDe5O4jrWfwQhsdURpJhwlQe8ABC57txZRAyBsRefZ4VgD8ydEFT9GY3rfIxqUvyhc%2FGQ%2BK2RdoJAAhBFR2QJ9XTQWXbOT8NoiYz1%2BhluHsc3Alnztl7c3239RlFgNRCPq%2BLkX5AOjdzRE5wlcv73g18p7fZVEKSQWOPmqBr8yDDQgObFBjqcAaHPUw02NDvEzpiOGuSDDJnmRzZ%2F3EcGbadSt3xBKETX%2FuCRcVDjOEhYx6artnrHKdScJkHtSxFyjg4DeOQiOhAedzm8fyCUCoSYnP4Prq1ED7yEf7sTfsmO%2BbQnyzNRMm5VXIG6k7QAOWU7SEXwYwyOLKCvIGXto9aF6PBmEC0wuwJOZDO3V7pyVCxBv90gcXbnfSW9f6fYFQK9wA%3D%3D&X-Amz-Signature=592a7f017a85a1017dc1fb6c122195dc30f02386e71fb26928dcf259c5b00314&X-Amz-SignedHeaders=host';
+            document.getElementById('s3-url').textContent = s3Url;
+            document.getElementById('s3-url').href = s3Url;
+
+            try {
+                const response = await fetch(s3Url);
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch S3 data: ${response.statusText}`);
+                }
+                const data = await response.json();
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('s3-data').textContent = JSON.stringify(data, null, 2);
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('error').textContent = `Error: ${error.message}`;
+            }
+        }
+
+        fetchS3Data();
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,125 @@
+@import "tailwindcss";
+@tailwind utilities;
+
+/* --------------------------
+   Theme Variables
+--------------------------- */
+:root {
+  --bg-main: #f8fafc;
+  --bg-sidebar: #ffffff;
+  --bg-header: #ffffff;
+  --bg-card: #ffffff; /* input background stays white */
+  --bg-hero: #eef2f7;
+  --bg-active: #eef2f7;
+  --bg-hover: #f1f5f9;
+
+  --text-primary: #1e293b;   /* dark text for inputs & general text */
+  --text-secondary: #64748b; /* placeholder / secondary text */
+  --text-active: #3b82f6;
+  --text-hero: #1e293b;
+  --icon-active: #3b82f6;
+  --shadow-color: #e2e8f0;
+
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+
+  color-scheme: light dark;
+  color: var(--text-primary);
+  background-color: var(--bg-main);
+}
+
+/* --------------------------
+   Base Styles
+--------------------------- */
+body {
+  margin: 0;
+  min-height: 100vh;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  background-color: var(--bg-main);
+  color: var(--text-primary);
+}
+
+/* --------------------------
+   Input / Textarea / Select
+   (Always light background)
+--------------------------- */
+input,
+textarea,
+select {
+  color: var(--text-primary);       /* dark text */
+  background-color: var(--bg-card); /* always white */
+  border: 1px solid #cbd5e1;       /* light gray border */
+  padding: 0.5rem;                  /* keep existing padding */
+  padding-left: 2.5rem;             /* add left padding for placeholder/icon */
+  border-radius: 0.375rem;
+  outline: none;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: var(--text-secondary);
+}
+
+input:focus,
+textarea:focus,
+select:focus {
+  border-color: #1e293b; /* dark focus border */
+  box-shadow: 0 0 0 1px #1e293b;
+}
+
+/* --------------------------
+   Light Mode Overrides
+--------------------------- */
+@media (prefers-color-scheme: light) {
+  :root {
+    color: #213547;
+    background-color: #ffffff;
+  }
+
+  /* Inputs stay white with dark text in light mode */
+  input,
+  textarea,
+  select {
+    color: #213547;
+    background-color: #ffffff;
+    border-color: #cbd5e1;
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: #64748b;
+  }
+}
+
+/* --------------------------
+   Dark Mode Overrides
+   (Inputs remain light)
+--------------------------- */
+@media (prefers-color-scheme: dark) {
+  :root {
+    color: rgba(255, 255, 255, 0.87);
+    background-color: #242424; /* page bg dark */
+  }
+
+  /* Inputs still have white bg with dark text */
+  input,
+  textarea,
+  select {
+    color: var(--text-primary);       /* dark text */
+    background-color: var(--bg-card); /* white bg */
+    border-color: #cbd5e1;           /* same border as light mode */
+  }
+
+  input::placeholder,
+  textarea::placeholder {
+    color: var(--text-secondary);    /* gray placeholder */
+  }
+
+  input:focus,
+  textarea:focus,
+  select:focus {
+    border-color: #1e293b;           /* dark focus border */
+    box-shadow: 0 0 0 1px #1e293b;
+  }
+}
